@@ -539,7 +539,7 @@
 
     <div class="current-time-bar">
         <div class="now-label">현재 시각</div>
-        <div class="now-time" id="clock">--:--</div>
+        <div class="now-time" id="clock">--:--:--</div>
     </div>
 </div>
 
@@ -614,13 +614,10 @@
     const SCHOOL_IP = '211.181.0.250';
 
     // 세션 정보
-    // ★ 임시 오픈 ★
-    const _t = new Date();
-    const _h = _t.getHours(), _m = _t.getMinutes();
     const SESSIONS = {
-        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [_h, _m], end: [23,59], key: "done_1" },
-        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [_h, _m], end: [23,59], key: "done_2" },
-        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [_h, _m], end: [23,59], key: "done_3" },
+        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [0,0], end: [23,59], key: "done_1" },
+        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [0,0], end: [23,59], key: "done_2" },
+        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [0,0], end: [23,59], key: "done_3" },
     };
 
     let currentSession = 1;
@@ -723,7 +720,6 @@
     }
 
     setInterval(updateClock, 1000);
-    updateClock();
 
     // ── 화면 전환 ──
     function showScreen(id) {
@@ -876,6 +872,19 @@
         .catch(() => {});
 
     function getDeviceInfo() {
+        const ua = navigator.userAgent;
+        let brand = '기타', type = '기타';
+        if (/iPhone/i.test(ua)) brand = 'iPhone';
+        else if (/iPad/i.test(ua)) brand = 'iPad';
+        else if (/SM-|Samsung/i.test(ua)) brand = '갤럭시';
+        else if (/Android/i.test(ua)) brand = 'Android';
+        else if (/Windows/i.test(ua)) brand = 'Windows PC';
+        else if (/Macintosh/i.test(ua)) brand = 'Mac';
+        if (/Mobile/i.test(ua)) type = '스마트폰';
+        else if (/Tablet|iPad/i.test(ua)) type = '태블릿';
+        else if (/Windows|Macintosh|Linux/i.test(ua)) type = 'PC';
+        return `${brand} (${type})`;
+    }
 
     function sendData(classNum, name, userType, stdId, stdName) {
         const sess = SESSIONS[currentSession];
@@ -957,6 +966,8 @@
         e.preventDefault();
         goHome();
     });
+
+    updateClock(); // 시계 즉시 시작
 </script>
 </body>
 </html>
