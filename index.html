@@ -806,6 +806,21 @@
 
         showMsg('info', '📡 제출 중...');
         btn.disabled = true;
+
+        // 출석일 때만 IP 체크
+        if (userType === '출석') {
+            if (userIp === '알수없음') {
+                showMsg('error', '네트워크 확인 중입니다. 잠시 후 다시 시도해주세요.');
+                btn.disabled = false;
+                return;
+            }
+            if (userIp !== '211.181.0.250') {
+                showMsg('error', '학교 와이파이에 연결된 상태에서만\n정상 출석 제출이 가능합니다.');
+                btn.disabled = false;
+                return;
+            }
+        }
+
         sendData(classNum, `${stdId} ${stdName}`, userType, '-', '-', stdId, stdName);
     }
 
