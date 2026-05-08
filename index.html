@@ -614,10 +614,13 @@
     const SCHOOL_IP = '211.181.0.250';
 
     // 세션 정보
+    // ★ 임시 오픈 ★
+    const _t = new Date();
+    const _h = _t.getHours(), _m = _t.getMinutes();
     const SESSIONS = {
-        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [16,30], end: [18,0], key: "done_1" },
-        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [19,0], end: [20,30], key: "done_2" },
-        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [20,40], end: [21,30], key: "done_3" },
+        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [_h, _m], end: [23,59], key: "done_1" },
+        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [_h, _m], end: [23,59], key: "done_2" },
+        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [_h, _m], end: [23,59], key: "done_3" },
     };
 
     let currentSession = 1;
