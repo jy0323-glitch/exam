@@ -582,11 +582,14 @@
         <div class="form-group">
             <label>출석 상태</label>
             <select id="statusSelect" class="form-control">
-                <option value="출석">🔵 정상 출석 (학교 안)</option>
-                <option value="결석">🔴 결석 (학교 밖)</option>
-                <option value="외출">🟠 외출 (학교 밖)</option>
-                <option value="학원">🟣 학원 (학교 밖)</option>
-                <option value="조퇴">⚫ 조퇴 (학교 밖)</option>
+                <optgroup label="📍 학교 안">
+                    <option value="교실">🟢 교실</option>
+                    <option value="홈베이스">🔵 홈베이스</option>
+                    <option value="또래학습">🟣 또래학습</option>
+                </optgroup>
+                <optgroup label="🏠 학교 밖">
+                    <option value="귀가">🔴 귀가</option>
+                </optgroup>
             </select>
         </div>
 
@@ -605,21 +608,16 @@
 
 <script>
     // ★ Google Apps Script 웹 앱 URL ★
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzpdSrQKu9cTyTZNklktY86r41yZg7HKFtexb2Fo72zAe-UyIH8F7YXQbm6FdM1IE4o/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbxWYJZIG_GgViVLNyV9owmZ6QrRZfFTNzEpBjtC-YraKGN7_DgxCg_ydf1gUrhlvQEU/exec";
 
-    // ★ 학교 좌표 ★
-    const SCHOOL_LAT = 36.8537281;
-    const SCHOOL_LNG = 127.4503709;
-    const ALLOWED_RADIUS = 500; // 500m로 확대
+    // ★ 학교 IP ★
+    const SCHOOL_IP = '211.181.0.250';
 
     // 세션 정보
-    // ★ 베타 테스트 모드 ★
-    const _t = new Date();
-    const _h = _t.getHours(), _m = _t.getMinutes();
     const SESSIONS = {
-        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [_h, _m], end: [_h, _m + 59], key: "done_1" },
-        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [_h, _m], end: [_h, _m + 59], key: "done_2" },
-        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [_h, _m], end: [_h, _m + 59], key: "done_3" },
+        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [16,30], end: [18,0], key: "done_1" },
+        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [19,0], end: [20,30], key: "done_2" },
+        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [20,40], end: [21,30], key: "done_3" },
     };
 
     let currentSession = 1;
@@ -633,9 +631,7 @@
         }
         return id;
     }
-    getDeviceId();
-    // ★ 베타 테스트 - 매 접속 시 완료기록 초기화 ★
-    localStorage.removeItem('attendance_done');
+    getDeviceId(); // 최초 접속 시 ID 생성
 
     // ── 로컬 완료 기록 (날짜별 리셋, 기기당 차수별 1회만) ──
     function todayKey() {
@@ -776,16 +772,7 @@
         showScreen('home');
     }
 
-    // ── 거리 계산 ──
-    function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    // ── 제출 ──
+    // ── IP 미리 가져오기 ──
     function startCheckIn() {
         const classNum  = document.getElementById("classSelect").value;
         const stdId     = document.getElementById("studentId").value.trim();
@@ -807,21 +794,22 @@
         showMsg('info', '📡 제출 중...');
         btn.disabled = true;
 
-        // 출석일 때만 IP 체크
-        if (userType === '출석') {
+        // 학교 안 상태일 때만 IP 체크
+        const schoolStatuses = ['교실', '홈베이스', '또래학습'];
+        if (schoolStatuses.includes(userType)) {
             if (userIp === '알수없음') {
                 showMsg('error', '네트워크 확인 중입니다. 잠시 후 다시 시도해주세요.');
                 btn.disabled = false;
                 return;
             }
-            if (userIp !== '211.181.0.250') {
-                showMsg('error', '학교 와이파이에 연결된 상태에서만\n정상 출석 제출이 가능합니다.');
+            if (userIp !== SCHOOL_IP) {
+                showMsg('error', '학교 와이파이에 연결된 상태에서만\n학교 안 출석 제출이 가능합니다.');
                 btn.disabled = false;
                 return;
             }
         }
 
-        sendData(classNum, `${stdId} ${stdName}`, userType, '-', '-', stdId, stdName);
+        sendData(classNum, `${stdId} ${stdName}`, userType, stdId, stdName);
     }
 
     // ── 명단 불러오기 ──
@@ -885,80 +873,13 @@
         .catch(() => {});
 
     function getDeviceInfo() {
-        const ua = navigator.userAgent;
-        let brand = '기타';
-        let type = '기타';
 
-        // 브랜드
-        if (/iPhone/i.test(ua))                       brand = 'iPhone';
-        else if (/iPad/i.test(ua))                    brand = 'iPad';
-        else if (/SM-|Samsung/i.test(ua))             brand = '갤럭시';
-        else if (/LM-|LG/i.test(ua))                 brand = 'LG';
-        else if (/Pixel/i.test(ua))                   brand = 'Pixel';
-        else if (/Android/i.test(ua))                 brand = 'Android';
-        else if (/Windows/i.test(ua))                 brand = 'Windows PC';
-        else if (/Macintosh/i.test(ua))               brand = 'Mac';
-
-        // 기기 종류
-        if (/Mobile/i.test(ua))                       type = '스마트폰';
-        else if (/Tablet|iPad/i.test(ua))             type = '태블릿';
-        else if (/Windows|Macintosh|Linux/i.test(ua)) type = 'PC';
-
-        return `${brand} (${type})`;
-    }
-    function tryGetLocation(attempt) {
-        const btn = document.getElementById("submitBtn");
-        const userType = document.getElementById("statusSelect").value;
-        const classNum = document.getElementById("classSelect").value;
-        const stdId    = document.getElementById("studentId").value.trim();
-        const stdName  = document.getElementById("studentName").value.trim();
-        const MAX = 3;
-
-        navigator.geolocation.getCurrentPosition(function(pos) {
-            const lat      = pos.coords.latitude;
-            const lng      = pos.coords.longitude;
-            const accuracy = pos.coords.accuracy;
-
-            // 정확도가 낮고 재시도 횟수가 남아있으면 재시도
-            if (accuracy > 200 && attempt < MAX) {
-                showMsg('info', `📡 위치 정밀도 향상 중... (${attempt + 1}/${MAX})`);
-                setTimeout(() => tryGetLocation(attempt + 1), 1500);
-                return;
-            }
-
-            const dist = getDistance(SCHOOL_LAT, SCHOOL_LNG, lat, lng);
-
-            if (userType === "출석" && dist > ALLOWED_RADIUS) {
-                // 재시도 횟수가 남아있으면 한 번 더
-                if (attempt < MAX) {
-                    showMsg('info', `📡 위치 재확인 중... (${attempt + 1}/${MAX})\n현재 약 ${Math.round(dist)}m`);
-                    setTimeout(() => tryGetLocation(attempt + 1), 2000);
-                } else {
-                    showMsg('error', `학교 위치를 벗어났습니다. (약 ${Math.round(dist)}m)\n실내라면 창가나 복도에서 다시 시도해주세요.`);
-                    btn.disabled = false;
-                }
-            } else {
-                sendData(classNum, `${stdId} ${stdName}`, userType, lat, lng, stdId, stdName);
-            }
-        }, function(err) {
-            if (err.code === 1) {
-                showMsg('error', 'GPS 권한이 거부되었습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.');
-            } else if (attempt < MAX) {
-                showMsg('info', `📡 위치 확인 재시도 중... (${attempt + 1}/${MAX})`);
-                setTimeout(() => tryGetLocation(attempt + 1), 2000);
-            } else {
-                showMsg('error', 'GPS 신호를 받을 수 없습니다.\n창가나 실외에서 다시 시도해주세요.');
-            }
-            if (attempt >= MAX || err.code === 1) btn.disabled = false;
-        }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
-    }
-
-    function sendData(classNum, name, userType, lat, lng, stdId, stdName) {
+    function sendData(classNum, name, userType, stdId, stdName) {
         const sess = SESSIONS[currentSession];
         const finalStatus = `${sess.label} - ${userType}`;
 
         const device = getDeviceInfo();
-        const url = `${scriptUrl}?className=${encodeURIComponent(classNum)}&name=${encodeURIComponent(name)}&status=${encodeURIComponent(finalStatus)}&lat=${lat}&lng=${lng}&device=${encodeURIComponent(device)}&userIp=${encodeURIComponent(userIp)}`;
+        const url = `${scriptUrl}?className=${encodeURIComponent(classNum)}&name=${encodeURIComponent(name)}&status=${encodeURIComponent(finalStatus)}&device=${encodeURIComponent(device)}&userIp=${encodeURIComponent(userIp)}`;
 
         // 출석일 때만 IP 체크 응답 확인 (no-cors 대신 cors로 변경)
         fetch(url)
