@@ -633,7 +633,9 @@
         }
         return id;
     }
-    getDeviceId(); // 최초 접속 시 ID 생성
+    getDeviceId();
+    // ★ 베타 테스트 - 매 접속 시 완료기록 초기화 ★
+    localStorage.removeItem('attendance_done');
 
     // ── 로컬 완료 기록 (날짜별 리셋, 기기당 차수별 1회만) ──
     function todayKey() {
