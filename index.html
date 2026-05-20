@@ -1,973 +1,746 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>진천고 2학년 출석체크</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --c1: #3b82f6;
-            --c2: #8b5cf6;
-            --c3: #10b981;
-            --dark: #0f172a;
-            --card: #1e293b;
-            --border: #334155;
-            --text: #f1f5f9;
-            --muted: #94a3b8;
-        }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background: var(--dark);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* ===== BG GRID ===== */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* ===== SCREENS ===== */
-        .screen { display: none; min-height: 100vh; position: relative; z-index: 1; }
-        .screen.active { display: flex; flex-direction: column; }
-
-        /* ===== HOME SCREEN ===== */
-        #home {
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            gap: 0;
-        }
-
-        .home-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .home-header .school-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(59,130,246,0.1);
-            border: 1px solid rgba(59,130,246,0.3);
-            border-radius: 100px;
-            padding: 6px 18px;
-            font-size: 12px;
-            color: #93c5fd;
-            letter-spacing: 0.05em;
-            margin-bottom: 20px;
-        }
-
-        .home-header h1 {
-            font-size: clamp(28px, 7vw, 42px);
-            font-weight: 900;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-        }
-
-        .home-header h1 span {
-            background: linear-gradient(135deg, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .home-header p {
-            color: var(--muted);
-            font-size: 14px;
-            margin-top: 10px;
-        }
-
-        /* Session Cards */
-        .sessions-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .session-card {
-            position: relative;
-            border-radius: 20px;
-            padding: 24px;
-            cursor: pointer;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-            border: 1px solid transparent;
-        }
-
-        .session-card:active { transform: scale(0.97); }
-
-        .session-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 20px;
-            opacity: 0.12;
-            transition: opacity 0.2s;
-        }
-
-        .session-card:hover::before { opacity: 0.2; }
-
-        .session-card.s1 { border-color: rgba(59,130,246,0.35); }
-        .session-card.s1::before { background: var(--c1); }
-        .session-card.s1 .session-num { color: var(--c1); }
-        .session-card.s1 .session-icon { background: rgba(59,130,246,0.15); color: var(--c1); }
-        .session-card.s1 .time-bar-fill { background: var(--c1); }
-        .session-card.s1 .check-badge { background: rgba(59,130,246,0.15); color: #93c5fd; }
-
-        .session-card.s2 { border-color: rgba(139,92,246,0.35); }
-        .session-card.s2::before { background: var(--c2); }
-        .session-card.s2 .session-num { color: var(--c2); }
-        .session-card.s2 .session-icon { background: rgba(139,92,246,0.15); color: var(--c2); }
-        .session-card.s2 .time-bar-fill { background: var(--c2); }
-        .session-card.s2 .check-badge { background: rgba(139,92,246,0.15); color: #c4b5fd; }
-
-        .session-card.s3 { border-color: rgba(16,185,129,0.35); }
-        .session-card.s3::before { background: var(--c3); }
-        .session-card.s3 .session-num { color: var(--c3); }
-        .session-card.s3 .session-icon { background: rgba(16,185,129,0.15); color: var(--c3); }
-        .session-card.s3 .time-bar-fill { background: var(--c3); }
-        .session-card.s3 .check-badge { background: rgba(16,185,129,0.15); color: #6ee7b7; }
-
-        .card-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-
-        .card-left { display: flex; align-items: center; gap: 14px; }
-
-        .session-icon {
-            width: 48px; height: 48px;
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-            flex-shrink: 0;
-        }
-
-        .session-info .session-num {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-
-        .session-info .session-time {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-
-        .status-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            background: #475569;
-        }
-
-        .status-dot.active-now {
-            background: #22c55e;
-            box-shadow: 0 0 0 4px rgba(34,197,94,0.2);
-            animation: pulse-dot 1.5s infinite;
-        }
-
-        @keyframes pulse-dot {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(34,197,94,0.2); }
-            50% { box-shadow: 0 0 0 8px rgba(34,197,94,0.05); }
-        }
-
-        .check-badge {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 100px;
-            letter-spacing: 0.03em;
-        }
-
-        .time-bar {
-            height: 4px;
-            background: rgba(255,255,255,0.06);
-            border-radius: 100px;
-            overflow: hidden;
-            margin-top: 4px;
-        }
-
-        .time-bar-fill {
-            height: 100%;
-            border-radius: 100px;
-            transition: width 0.8s ease;
-        }
-
-        /* Done overlay on card */
-        .session-card.done-card {
-            opacity: 0.6;
-        }
-
-        .session-card.done-card .done-overlay-text {
-            display: flex;
-        }
-
-        .done-overlay-text {
-            display: none;
-            position: absolute;
-            top: 12px; right: 16px;
-            background: #22c55e;
-            color: white;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 100px;
-            letter-spacing: 0.05em;
-        }
-
-        /* Current time display */
-        .current-time-bar {
-            width: 100%;
-            max-width: 400px;
-            margin-top: 24px;
-            text-align: center;
-        }
-
-        .current-time-bar .now-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-        .current-time-bar .now-time { font-size: 28px; font-weight: 900; letter-spacing: -0.02em; }
-
-        /* ===== FORM SCREEN ===== */
-        #form-screen {
-            padding: 0;
-        }
-
-        .form-header {
-            padding: 20px 20px 0;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .back-btn {
-            width: 40px; height: 40px;
-            border-radius: 12px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            font-size: 18px;
-            flex-shrink: 0;
-            color: var(--text);
-            transition: background 0.15s;
-        }
-
-        .back-btn:hover { background: #273549; }
-
-        .form-header-info {}
-        .form-header-info .session-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--muted);
-        }
-
-        .form-header-info .session-name {
-            font-size: 20px;
-            font-weight: 700;
-        }
-
-        .form-body {
-            padding: 24px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            flex: 1;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            color: var(--muted);
-            margin-bottom: 8px;
-        }
-
-        .form-control {
-            width: 100%;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px 16px;
-            font-size: 16px;
-            font-family: inherit;
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.15s;
-            -webkit-appearance: none;
-        }
-
-        .form-control:focus {
-            border-color: rgba(99,179,237,0.5);
-        }
-
-        select.form-control {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            padding-right: 40px;
-            cursor: pointer;
-        }
-
-        select.form-control option {
-            background: #1e293b;
-        }
-
-        .row-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 16px;
-            border-radius: 14px;
-            border: none;
-            font-size: 17px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            margin-top: 4px;
-            transition: opacity 0.2s, transform 0.15s;
-            color: white;
-        }
-
-        .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .submit-btn:active:not(:disabled) { transform: scale(0.98); }
-
-        .submit-btn.s1 { background: linear-gradient(135deg, #3b82f6, #6366f1); }
-        .submit-btn.s2 { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
-        .submit-btn.s3 { background: linear-gradient(135deg, #10b981, #059669); }
-
-        /* ===== MESSAGE ===== */
-        #message {
-            margin-top: 8px;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            line-height: 1.6;
-            display: none;
-        }
-
-        #message.success {
-            display: block;
-            background: rgba(34,197,94,0.1);
-            border: 1px solid rgba(34,197,94,0.3);
-            color: #86efac;
-        }
-
-        #message.error {
-            display: block;
-            background: rgba(239,68,68,0.1);
-            border: 1px solid rgba(239,68,68,0.3);
-            color: #fca5a5;
-        }
-
-        #message.info {
-            display: block;
-            background: rgba(59,130,246,0.1);
-            border: 1px solid rgba(59,130,246,0.3);
-            color: #93c5fd;
-        }
-
-        /* ===== SUCCESS SCREEN ===== */
-        #success-screen {
-            align-items: center;
-            justify-content: center;
-            padding: 40px 24px;
-            text-align: center;
-        }
-
-        .success-icon {
-            width: 90px; height: 90px;
-            border-radius: 50%;
-            background: rgba(34,197,94,0.15);
-            border: 2px solid rgba(34,197,94,0.4);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 40px;
-            margin: 0 auto 24px;
-            animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        @keyframes pop-in {
-            from { transform: scale(0.5); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        .success-title {
-            font-size: 24px;
-            font-weight: 900;
-            margin-bottom: 10px;
-        }
-
-        .success-detail {
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.7;
-            margin-bottom: 32px;
-        }
-
-        .success-detail strong { color: var(--text); }
-
-        .return-btn {
-            background: var(--card);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 14px 32px;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .return-btn:hover { background: #273549; }
-
-        /* ===== ANIMATIONS ===== */
-        @keyframes slide-up {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .sessions-grid .session-card:nth-child(1) { animation: slide-up 0.4s 0.05s both; }
-        .sessions-grid .session-card:nth-child(2) { animation: slide-up 0.4s 0.12s both; }
-        .sessions-grid .session-card:nth-child(3) { animation: slide-up 0.4s 0.19s both; }
-
-        .home-header { animation: slide-up 0.4s both; }
-    </style>
-</head>
-<body>
-
-<!-- ===== HOME ===== -->
-<div class="screen active" id="home">
-    <div class="home-header">
-        <div class="school-badge">🏫 진천고등학교 2학년</div>
-        <h1>오후 출석<br><span>체크</span></h1>
-        <p>해당 시간대 카드를 눌러 출석하세요</p>
+<title>진천고 스터디룸 예약 시스템</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:14px;color:var(--color-text-primary)}
+.tab-bar{display:flex;justify-content:center;gap:10px;border-bottom:none;margin-bottom:1.5rem}
+.tab{padding:10px 26px;cursor:pointer;font-size:14px;font-weight:500;color:#666;background:#f0f0f0;border:none;border-radius:999px;transition:all 0.18s;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.tab.active{color:#fff;background:linear-gradient(135deg,#4a7c2f,#6aab3e);box-shadow:0 3px 10px rgba(74,124,47,0.35);transform:translateY(-1px)}.tab:hover:not(.active){background:#e4e4e4;transform:translateY(-1px)}
+.view{display:none}.view.active{display:block}
+.room-tabs{display:flex;justify-content:center;gap:8px;margin-bottom:1.25rem}
+.room-tab{padding:9px 22px;border-radius:999px;border:2px solid #d0d0d0;cursor:pointer;font-size:13px;font-weight:500;background:#fafafa;color:#888;transition:all 0.18s;box-shadow:0 1px 3px rgba(0,0,0,0.07)}.room-tab:hover:not(.active){background:#f0f0f0;border-color:#bbb;transform:translateY(-1px)}
+.room-tab.active{background:linear-gradient(135deg,#3a6bbd,#5b8fe8);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(58,107,189,0.35);transform:translateY(-1px)}
+.week-nav{display:flex;align-items:center;gap:12px;margin-bottom:1rem}
+.week-nav button{background:none;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:4px 10px;cursor:pointer;font-size:13px;color:var(--color-text-primary)}
+.week-label{font-size:14px;font-weight:500;flex:1}
+.cal-wrap{overflow-x:auto;overflow-y:visible}
+.cal-grid{display:grid;grid-template-columns:110px repeat(5,1fr);min-width:480px;border:2px solid #AAAAAA;border-radius:var(--border-radius-lg);overflow:visible}
+.cal-head{background:var(--color-background-secondary);padding:10px 4px;text-align:center;font-size:14px;color:var(--color-text-secondary);border-bottom:2px solid #AAAAAA;border-right:2px solid #AAAAAA}
+.cal-head.today-col{color:var(--color-text-info);font-weight:500}
+.slot-label{padding:10px 8px;font-size:14px;color:var(--color-text-secondary);border-right:2px solid #AAAAAA;border-bottom:1.5px solid #CCCCCC;background:var(--color-background-secondary);line-height:1.5;display:flex;align-items:center;justify-content:center;text-align:center}
+.slot-label:last-of-type{border-bottom:none}
+.cal-cell{border-right:1.5px solid #CCCCCC;border-bottom:1.5px solid #CCCCCC;padding:4px;min-height:56px;cursor:pointer;position:relative;transition:background .1s;vertical-align:top}
+.cal-cell:hover{background:var(--color-background-secondary)}
+.cal-cell.closed{background:var(--color-background-tertiary);cursor:default}
+.cal-cell.closed:hover{background:var(--color-background-tertiary)}
+.cal-cell:last-child{border-right:none}
+.row-last .cal-cell,.row-last .slot-label{border-bottom:none}
+.booked-slot{border-radius:4px;padding:3px 6px;font-size:13px;font-weight:500;line-height:1.5;margin-bottom:2px}
+.slot-mine{background:#B5D4F4;color:#0C447C}
+.slot-other{background:#D3D1C7;color:#444441}
+.slot-approved{background:#A8D5A2;color:#1E5C18}
+.slot-pending{background:#FAC775;color:#633806}
+.legend{display:flex;gap:12px;margin-bottom:1rem;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary)}
+.legend-dot{width:12px;height:12px;border-radius:3px}
+.closed-x{font-size:11px;color:var(--color-text-tertiary);text-align:center;padding-top:18px}
+.tooltip-wrap{position:relative;display:block}
+#floating-tooltip{display:none;position:fixed;z-index:9999;background:#222;color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.2);line-height:1.9;pointer-events:none;min-width:140px}
+.tooltip-wrap{position:relative}
+.tooltip-wrap .tooltip-box{display:none;position:absolute;z-index:999;top:calc(100% + 6px);left:0;background:#222;color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.18);line-height:1.8;pointer-events:none}
+.tooltip-wrap:hover .tooltip-box{display:block}
+.form-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.single{grid-template-columns:1fr}
+label{display:block;font-size:12px;color:var(--color-text-secondary);margin-bottom:4px}
+select,input[type=text],input[type=date]{width:100%;padding:7px 10px;border-radius:var(--border-radius-md);border:1.5px solid #AAAAAA;font-size:14px;background:var(--color-background-primary);color:var(--color-text-primary)}
+.btn-primary{background:var(--color-text-primary);color:var(--color-background-primary);border:none;border-radius:var(--border-radius-md);padding:9px 20px;font-size:14px;cursor:pointer;font-weight:500}
+.btn-cancel{background:none;border:0.5px solid var(--color-border-tertiary);color:#A32D2D;border-radius:var(--border-radius-md);padding:4px 10px;font-size:12px;cursor:pointer}
+.alert{border-radius:var(--border-radius-md);padding:10px 14px;font-size:13px;margin-bottom:12px}
+.alert-warn{background:#FAEEDA;color:#633806}
+.alert-success{background:#EAF3DE;color:#3B6D11}
+.alert-err{background:#FCEBEB;color:#A32D2D}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-pending{background:#FAEEDA;color:#633806}
+.badge-approved{background:#EAF3DE;color:#3B6D11}
+.badge-cancelled{background:#D3D1C7;color:#444441}
+.badge-denied{background:#FCEBEB;color:#A32D2D}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px}
+.admin-table th{text-align:left;padding:8px 10px;font-size:12px;font-weight:500;color:var(--color-text-secondary);border-bottom:2px solid #AAAAAA;border-right:1.5px solid #CCCCCC}
+.admin-table th:last-child{border-right:none}
+.admin-table td{padding:8px 10px;border-bottom:1.5px solid #CCCCCC;border-right:1.5px solid #CCCCCC;vertical-align:middle}
+.admin-table td:last-child{border-right:none}
+.btn-approve{background:#EAF3DE;border:none;color:#3B6D11;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;margin-right:4px}
+.btn-deny{background:#FCEBEB;border:none;color:#A32D2D;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px}
+.stat-val{font-size:22px;font-weight:500}
+.stat-lbl{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.exam-toggle{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:1.25rem;font-size:13px}
+.toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--color-border-secondary);border-radius:20px;transition:.2s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s}
+input:checked+.toggle-slider{background:#3B6D11}
+input:checked+.toggle-slider:before{transform:translateX(16px)}
+.co-user-row{display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;align-items:center;margin-bottom:6px}
+.btn-remove-co{background:none;border:none;color:var(--color-text-tertiary);cursor:pointer;font-size:18px;padding:0;line-height:1}
+.btn-add-co{margin-top:6px;background:none;border:0.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-md);padding:6px 12px;font-size:12px;color:var(--color-text-secondary);cursor:pointer;width:100%}
+.notice-box{background:#F0F4FF;border:0.5px solid #C5D3F0;border-radius:var(--border-radius-md);padding:8px 12px;font-size:12px;color:#3A4E8C;margin-top:8px;line-height:1.5}
+</style>
+
+<div id="floating-tooltip"></div>
+<div id="pw-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:28px 24px;width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">관리자 인증</div>
+    <div style="font-size:12px;color:#888;margin-bottom:16px;">비밀번호를 입력하세요</div>
+    <input id="pw-input" type="password" placeholder="비밀번호"
+      style="width:100%;padding:8px 12px;border:1.5px solid #AAAAAA;border-radius:8px;font-size:14px;margin-bottom:8px;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter')submitPw()">
+    <div id="pw-error" style="display:none;color:#A32D2D;font-size:12px;margin-bottom:8px;">비밀번호가 틀렸습니다.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="document.getElementById('pw-modal').style.display='none'"
+        style="background:none;border:1px solid #ccc;border-radius:8px;padding:7px 16px;font-size:13px;cursor:pointer;">취소</button>
+      <button onclick="submitPw()"
+        style="background:#222;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;cursor:pointer;font-weight:500;">확인</button>
     </div>
-
-    <div class="sessions-grid">
-        <!-- 1차 -->
-        <div class="session-card s1" id="card-1">
-            <div class="done-overlay-text" id="done-1">✓ 완료</div>
-            <div class="card-top">
-                <div class="card-left">
-                    <div class="session-icon">📘</div>
-                    <div class="session-info">
-                        <div class="session-num">1차 출석</div>
-                        <div class="session-time">16:30 ~ 18:00</div>
-                    </div>
-                </div>
-                <div class="card-right">
-                    <div class="status-dot" id="dot-1"></div>
-                    <div class="check-badge" id="badge-1">대기중</div>
-                </div>
-            </div>
-            <div class="time-bar">
-                <div class="time-bar-fill" id="bar-1" style="width:0%"></div>
-            </div>
-        </div>
-
-        <!-- 2차 -->
-        <div class="session-card s2" id="card-2">
-            <div class="done-overlay-text" id="done-2">✓ 완료</div>
-            <div class="card-top">
-                <div class="card-left">
-                    <div class="session-icon">📗</div>
-                    <div class="session-info">
-                        <div class="session-num">2차 출석</div>
-                        <div class="session-time">19:00 ~ 20:30</div>
-                    </div>
-                </div>
-                <div class="card-right">
-                    <div class="status-dot" id="dot-2"></div>
-                    <div class="check-badge" id="badge-2">대기중</div>
-                </div>
-            </div>
-            <div class="time-bar">
-                <div class="time-bar-fill" id="bar-2" style="width:0%"></div>
-            </div>
-        </div>
-
-        <!-- 3차 -->
-        <div class="session-card s3" id="card-3">
-            <div class="done-overlay-text" id="done-3">✓ 완료</div>
-            <div class="card-top">
-                <div class="card-left">
-                    <div class="session-icon">📕</div>
-                    <div class="session-info">
-                        <div class="session-num">3차 출석</div>
-                        <div class="session-time">20:40 ~ 21:30</div>
-                    </div>
-                </div>
-                <div class="card-right">
-                    <div class="status-dot" id="dot-3"></div>
-                    <div class="check-badge" id="badge-3">대기중</div>
-                </div>
-            </div>
-            <div class="time-bar">
-                <div class="time-bar-fill" id="bar-3" style="width:0%"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="current-time-bar">
-        <div class="now-label">현재 시각</div>
-        <div class="now-time" id="clock">--:--:--</div>
-    </div>
+  </div>
 </div>
 
-<!-- ===== FORM SCREEN ===== -->
-<div class="screen" id="form-screen">
-    <div class="form-header">
-        <div class="back-btn" id="backBtn">←</div>
-        <div class="form-header-info">
-            <div class="session-label" id="form-session-label">1차 출석</div>
-            <div class="session-name" id="form-session-name">16:30 ~ 18:00</div>
-        </div>
-    </div>
+<h2 style="text-align:center;font-size:26px;font-weight:700;margin:1.2rem 0 0.5rem;letter-spacing:-0.3px;">📖 진천고 스터디룸 예약 시스템 📖</h2>
 
-    <div class="form-body">
-        <div class="form-group">
-            <label>반 선택</label>
-            <select id="classSelect" class="form-control">
-                <option value="">-- 반 선택 --</option>
-                <option value="1반">1반</option><option value="2반">2반</option>
-                <option value="3반">3반</option><option value="4반">4반</option>
-                <option value="5반">5반</option><option value="6반">6반</option>
-                <option value="7반">7반</option><option value="8반">8반</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>번호 선택</label>
-            <select id="studentSelect" class="form-control">
-                <option value="">-- 반을 먼저 선택하세요 --</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>이름 확인</label>
-            <input type="text" id="studentName" class="form-control" placeholder="번호 선택 시 자동입력" readonly style="opacity:0.7;">
-        </div>
-
-        <input type="hidden" id="studentId">
-
-        <div class="form-group">
-            <label>출석 상태</label>
-            <select id="statusSelect" class="form-control">
-                <optgroup label="📍 학교 안">
-                    <option value="교실">🟢 교실</option>
-                    <option value="홈베이스">🔵 홈베이스</option>
-                    <option value="또래학습">🟣 또래학습</option>
-                </optgroup>
-                <optgroup label="🏠 학교 밖">
-                    <option value="귀가">🔴 귀가</option>
-                </optgroup>
-            </select>
-        </div>
-
-        <button class="submit-btn s1" id="submitBtn">✅ 출석 제출하기</button>
-        <div id="message"></div>
-    </div>
+<div style="padding:1rem 0">
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('student',this)">📚 학생 예약</button>
+  <button class="tab" onclick="switchTab('admin',this)">🔑 관리자</button>
 </div>
 
-<!-- ===== SUCCESS SCREEN ===== -->
-<div class="screen" id="success-screen">
-    <div class="success-icon">✓</div>
-    <div class="success-title">출석 완료!</div>
-    <div class="success-detail" id="success-detail"></div>
-    <button class="return-btn" id="returnBtn">← 홈으로 돌아가기</button>
+<div id="view-student" class="view active">
+  <div id="alert-box" style="display:none"></div>
+  <div class="room-tabs">
+    <button class="room-tab active" onclick="switchRoom('A',this)">🏠 스터디룸 A</button>
+    <button class="room-tab" onclick="switchRoom('B',this)">🏡 스터디룸 B</button>
+  </div>
+  <div style="background:#EEF2FB;border:1px solid #C5D3F0;border-radius:var(--border-radius-md);padding:14px 18px;font-size:14px;color:#3A4E8C;margin-bottom:12px;line-height:1.7">
+    📌 <strong>예약 규칙 안내</strong><br>
+    · 예약은 <strong>매주 월요일</strong>에 열립니다<br>
+    · <strong>각 시간대 시작 전까지만</strong> 예약 가능합니다 (시작 후 신청 불가)<br>
+    · 같은 날 2타임 연속 예약 가능<br>
+    · 이틀 연속 예약 가능<br>
+    · <strong>3일 연속 예약은 불가</strong>합니다 (금, 월, 화 불가 / 대표자 및 동반 학생 모두 해당)<br>
+    · <strong>예약을 했으면 반드시 그 자리를 지켜주세요</strong><br>
+    · 공부가 끝난 후 자리를 깨끗이 치우고 퇴실해주세요<br>
+    · 동일 시간대 예약이 겹칠 경우 <strong>먼저 예약한 팀을 우선</strong>으로 합니다<br>
+    · 퇴실 후 자리가 더럽다는 민원이 접수되면 <strong>스터디룸 사용이 제한</strong>될 수 있습니다
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#B5D4F4"></div>내 예약</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#A8D5A2"></div>승인됨</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#D3D1C7"></div>예약됨</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FAC775"></div>승인 대기</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--color-background-tertiary);border:0.5px solid var(--color-border-tertiary)"></div>운영 안 함</div>
+  </div>
+  <div class="week-nav">
+    <span class="week-label" id="week-label"></span>
+  </div>
+  <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
+
+  <div style="margin-top:1.5rem">
+    <div class="form-card">
+      <div style="font-size:15px;font-weight:500;margin-bottom:1rem"><i class="ti ti-calendar-plus" style="font-size:16px;vertical-align:-2px;margin-right:6px" aria-hidden="true"></i>예약 신청</div>
+
+      <!-- 대표자 정보 -->
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">대표자</div>
+      <div class="form-row">
+        <div><label>대표자 이름</label><input type="text" id="f-name" placeholder="이름 입력"></div>
+        <div>
+          <label>학번</label>
+          <input type="text" id="f-id" placeholder="20201" maxlength="5" oninput="this.value=this.value.replace(/\D/g,'');this.style.borderColor=this.value.length===5?'#3B6D11':this.value.length>0?'#A32D2D':'#AAAAAA';renderMyReservations()">
+          <div style="margin-top:5px;font-size:11px;color:#888;">학번은 5자리 숫자로 입력해주세요. &nbsp;예) 20201</div>
+        </div>
+      </div>
+
+      <!-- 같이 공부하는 학생 -->
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">같이 공부하는 학생</div>
+      <div id="co-users"></div>
+      <button type="button" class="btn-add-co" onclick="addCoUser()">+ 학생 추가 &nbsp;—&nbsp; 이곳을 클릭해서 같이 공부하는 학생을 추가하세요.</button>
+      <div class="notice-box" style="margin-bottom:0">
+        ⚠️ 예약 명단에 등록된 학생 외에는 스터디룸 입실이 불가합니다. 명단 외 인원이 확인될 경우 예약이 취소될 수 있습니다.
+      </div>
+
+      <!-- 예약 정보 -->
+      <div style="border-top:0.5px solid var(--color-border-tertiary);margin:16px 0 12px"></div>
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">예약 정보</div>
+      <div class="form-row">
+        <div><label>날짜</label><input type="date" id="f-date" onchange="updateSlots()"></div>
+        <div><label>스터디룸</label>
+          <select id="f-room"><option value="A">스터디룸 A</option><option value="B">스터디룸 B</option></select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div><label>이용 시간</label><select id="f-slot"></select></div>
+      </div>
+      <div class="form-row single">
+        <div><label>사용 목적</label><input type="text" id="f-purpose" placeholder="예: 팀 프로젝트 회의"></div>
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="btn-primary" onclick="submitReservation()"><i class="ti ti-send" style="font-size:14px;vertical-align:-1px;margin-right:6px" aria-hidden="true"></i>예약 신청하기</button>
+      </div>
+    </div>
+    <div id="my-reservations"></div>
+  </div>
+</div>
+
+<div id="view-admin" class="view">
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="st-total">0</div><div class="stat-lbl">전체 예약</div></div>
+    <div class="stat"><div class="stat-val" id="st-pending" style="color:#854F0B">0</div><div class="stat-lbl">승인 대기</div></div>
+    <div class="stat"><div class="stat-val" id="st-approved" style="color:#3B6D11">0</div><div class="stat-lbl">승인 완료</div></div>
+  </div>
+  <div style="font-size:15px;font-weight:500;margin-bottom:12px">예약 관리</div>
+  <div style="overflow-x:auto;border:2px solid #AAAAAA;border-radius:var(--border-radius-lg)">
+    <table class="admin-table">
+      <thead><tr><th>대표자</th><th>학번</th><th>동반 학생</th><th>룸</th><th>날짜</th><th>이용 시간</th><th>목적</th><th>상태</th><th>처리</th></tr></thead>
+      <tbody id="admin-tbody"></tbody>
+    </table>
+  </div>
+</div>
 </div>
 
 <script>
-    // ★ Google Apps Script 웹 앱 URL ★
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbxWYJZIG_GgViVLNyV9owmZ6QrRZfFTNzEpBjtC-YraKGN7_DgxCg_ydf1gUrhlvQEU/exec";
+// =============================================
+//  GAS 연동 설정 - 배포 후 여기에 URL 붙여넣기
+// =============================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzUl1CtnIa7lXOHnvNao53w98YbnA65Sqs2isv6hBbbb0FEiZRUjmSyJwKRbBU9uMLY/exec";
 
-    // ★ 학교 IP ★
-    const SCHOOL_IP = '211.181.0.250';
+const SLOTS_WEEKDAY = [
+  {label:'16:30 ~ 18:00', start:'16:30', end:'18:00'},
+  {label:'19:00 ~ 20:30', start:'19:00', end:'20:30'},
+  {label:'20:40 ~ 21:30', start:'20:40', end:'21:30'},
+];
+const SLOTS_FRI = [
+  {label:'16:30 ~ 18:00', start:'16:30', end:'18:00'},
+  {label:'19:00 ~ 20:30', start:'19:00', end:'20:30'},
+];
 
-    // 세션 정보
-    const SESSIONS = {
-        1: { label: "1차 출석", time: "16:30 ~ 18:00", start: [0,0], end: [23,59], key: "done_1" },
-        2: { label: "2차 출석", time: "19:00 ~ 20:30", start: [0,0], end: [23,59], key: "done_2" },
-        3: { label: "3차 출석", time: "20:40 ~ 21:30", start: [0,0], end: [23,59], key: "done_3" },
-    };
+function getSlotsForDate(dateStr){
+  if(!dateStr) return [];
+  const d = new Date(dateStr);
+  const dow = d.getDay();
+  if(dow===0||dow===6) return [];
+  if(dow===5) return SLOTS_FRI;
+  return SLOTS_WEEKDAY;
+}
 
-    let currentSession = 1;
+let weekOffset = 0;
+let currentRoom = 'A';
+let examMode = false;
+let coUserCount = 0;
+let reservations = [];
+let isLoading = false;
 
-    // ── 기기 고유 ID (최초 접속 시 생성, 영구 보관) ──
-    function getDeviceId() {
-        let id = localStorage.getItem('device_id');
-        if (!id) {
-            id = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
-            localStorage.setItem('device_id', id);
-        }
-        return id;
-    }
-    getDeviceId(); // 최초 접속 시 ID 생성
+function getThisWeekMonday(){
+  const today=new Date();
+  const mon=new Date(today);
+  mon.setDate(today.getDate()-((today.getDay()+6)%7));
+  mon.setHours(0,0,0,0);
+  return mon;
+}
 
-    // ── 로컬 완료 기록 (날짜별 리셋, 기기당 차수별 1회만) ──
-    function todayKey() {
-        const d = new Date();
-        return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-    }
+function getThisWeekFriday(){
+  const mon=getThisWeekMonday();
+  const fri=new Date(mon);
+  fri.setDate(mon.getDate()+4);
+  return fri;
+}
 
-    function isDone(session) {
-        try {
-            const data = JSON.parse(localStorage.getItem('attendance_done') || '{}');
-            return data[todayKey()]?.[SESSIONS[session].key] !== undefined;
-        } catch { return false; }
-    }
+function changeWeek(d){ /* 이번 주만 허용 — 이동 불가 */ }
 
-    function getDoneName(session) {
-        try {
-            const data = JSON.parse(localStorage.getItem('attendance_done') || '{}');
-            return data[todayKey()]?.[SESSIONS[session].key] || '';
-        } catch { return ''; }
-    }
+function getDateStr(offsetDays){
+  const d=new Date(); d.setDate(d.getDate()+offsetDays);
+  return d.toISOString().slice(0,10);
+}
 
-    function markDone(session, studentName) {
-        try {
-            const data = JSON.parse(localStorage.getItem('attendance_done') || '{}');
-            if (!data[todayKey()]) data[todayKey()] = {};
-            data[todayKey()][SESSIONS[session].key] = studentName;
-            localStorage.setItem('attendance_done', JSON.stringify(data));
-        } catch {}
-    }
+// ---- API 함수 ----
+async function apiGet() {
+  const res = await fetch(GAS_URL, {
+    method: 'GET',
+    redirect: 'follow'
+  });
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error);
+  // 타입 정규화: GAS 시트에서 오는 값 보정
+  return data.data.map(r => ({
+    ...r,
+    id: Number(r.id),
+    slotIdx: Number(r.slotIdx),
+    sid: String(r.sid).trim(),
+    status: String(r.status).trim(),
+    // 날짜가 "2026-05-20T15:00:00.000Z" 형식으로 올 경우 "2026-05-20"으로 변환
+    date: String(r.date).slice(0, 10),
+    coUsers: Array.isArray(r.coUsers) ? r.coUsers.map(u => ({...u, sid: String(u.sid).trim()})) : []
+  }));
+}
 
-    // ── 카드 상태 업데이트 ──
-    function toMin(h, m) { return h * 60 + m; }
+async function apiPost(body) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error);
+  return data;
+}
 
-    function updateCards() {
-        const now = new Date();
-        const cur = toMin(now.getHours(), now.getMinutes());
+async function loadReservations() {
+  try {
+    showLoadingOverlay(true);
+    reservations = await apiGet();
+    renderCalendar();
+    renderMyReservations();
+    if(document.getElementById('view-admin').classList.contains('active')) renderAdmin();
+  } catch(e) {
+    showAlert('err', '데이터 불러오기 실패: ' + e.message);
+  } finally {
+    showLoadingOverlay(false);
+  }
+}
 
-        for (let s = 1; s <= 3; s++) {
-            const sess = SESSIONS[s];
-            const start = toMin(...sess.start);
-            const end   = toMin(...sess.end);
-            const dot   = document.getElementById(`dot-${s}`);
-            const badge = document.getElementById(`badge-${s}`);
-            const bar   = document.getElementById(`bar-${s}`);
-            const card  = document.getElementById(`card-${s}`);
-            const doneEl= document.getElementById(`done-${s}`);
+function showLoadingOverlay(show) {
+  let overlay = document.getElementById('loading-overlay');
+  if(!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;font-size:14px;color:#666';
+    overlay.innerHTML = '⏳ 불러오는 중...';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = show ? 'flex' : 'none';
+}
 
-            if (isDone(s)) {
-                card.classList.add('done-card');
-                doneEl.style.display = 'flex';
-                badge.textContent = '제출완료';
-                bar.style.width = '100%';
-                dot.classList.remove('active-now');
-                continue;
-            }
+function getWeekDates(){
+  const today=new Date();
+  const mon=new Date(today);
+  mon.setDate(today.getDate()-((today.getDay()+6)%7)+weekOffset*7);
+  return Array.from({length:5},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+}
 
-            card.classList.remove('done-card');
-            doneEl.style.display = 'none';
+function addCoUser(){
+  const id='co-'+(coUserCount++);
+  const div=document.createElement('div');
+  div.className='co-user-row';
+  div.id=id;
+  div.innerHTML=`
+    <input type="text" placeholder="이름" style="font-size:13px;padding:6px 8px;border:1.5px solid #AAAAAA;border-radius:var(--border-radius-md)">
+    <input type="text" placeholder="학번 (예: 20201)" maxlength="5" oninput="this.value=this.value.replace(/\D/g,'');this.style.borderColor=this.value.length===5?'#3B6D11':this.value.length>0?'#A32D2D':'#AAAAAA';" style="font-size:13px;padding:6px 8px;border:1.5px solid #AAAAAA;border-radius:var(--border-radius-md)">
+    <button class="btn-remove-co" onclick="document.getElementById('${id}').remove()" title="삭제">×</button>
+  `;
+  document.getElementById('co-users').appendChild(div);
+}
 
-            if (cur >= start && cur <= end) {
-                // 진행 중
-                const progress = Math.min(100, Math.round((cur - start) / (end - start) * 100));
-                dot.classList.add('active-now');
-                badge.textContent = '진행 중';
-                bar.style.width = progress + '%';
-            } else if (cur < start) {
-                dot.classList.remove('active-now');
-                badge.textContent = '대기중';
-                bar.style.width = '0%';
-            } else {
-                dot.classList.remove('active-now');
-                badge.textContent = '종료됨';
-                bar.style.width = '100%';
-            }
-        }
-    }
+function getCoUsers(){
+  const rows=document.querySelectorAll('.co-user-row');
+  const result=[];
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const name=inputs[0].value.trim();
+    const sid=inputs[1].value.trim();
+    if(name||sid) result.push({name,sid});
+  });
+  return result;
+}
 
-    // ── 시계 ──
-    function updateClock() {
-        const now = new Date();
-        const h = String(now.getHours()).padStart(2,'0');
-        const m = String(now.getMinutes()).padStart(2,'0');
-        const s = String(now.getSeconds()).padStart(2,'0');
-        document.getElementById('clock').textContent = `${h}:${m}:${s}`;
-        updateCards();
-    }
+function switchTab(t,btn){
+  if(t==='admin'){
+    document.getElementById('pw-modal').style.display='flex';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-error').style.display='none';
+    setTimeout(()=>document.getElementById('pw-input').focus(),100);
+    return;
+  }
+  doSwitchTab(t,btn);
+}
 
-    setInterval(updateClock, 1000);
+function doSwitchTab(t,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else document.querySelector('.tab[onclick*="'+t+'"]').classList.add('active');
+  document.getElementById('view-'+t).classList.add('active');
+  if(t==='admin') renderAdmin();
+}
 
-    // ── 화면 전환 ──
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        window.scrollTo(0,0);
-    }
+function submitPw(){
+  const pw = document.getElementById('pw-input').value;
+  if(pw === '0208'){
+    document.getElementById('pw-modal').style.display='none';
+    doSwitchTab('admin', null);
+  } else {
+    document.getElementById('pw-error').style.display='block';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+  }
+}
 
-    function openSession(s) {
-        const sess = SESSIONS[s];
-        const now = new Date();
-        const cur = toMin(now.getHours(), now.getMinutes());
-        const start = toMin(...sess.start);
-        const end   = toMin(...sess.end);
+function switchRoom(r,btn){
+  currentRoom=r;
+  document.querySelectorAll('.room-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCalendar();
+}
 
-        if (cur < start) {
-            const sh = String(sess.start[0]).padStart(2,'0');
-            const sm = String(sess.start[1]).padStart(2,'0');
-            alert(`아직 ${sess.label} 시간이 아닙니다.\n${sh}:${sm} 이후에 제출해주세요.`);
-            return;
-        }
-        if (cur > end) {
-            alert(`${sess.label} 출석 시간이 종료되었습니다.`);
-            return;
-        }
+function changeWeek(d){weekOffset+=d;renderCalendar();}
 
-        currentSession = s;
+function renderCalendar(){
+  const dates=getWeekDates();
+  const days=['월','화','수','목','금'];
+  const todayStr=new Date().toISOString().slice(0,10);
+  const grid=document.getElementById('cal-grid');
+  grid.innerHTML='';
+  const wl=document.getElementById('week-label');
+  wl.textContent=`${dates[0].getMonth()+1}월 ${dates[0].getDate()}일 — ${dates[4].getMonth()+1}월 ${dates[4].getDate()}일`;
 
-        document.getElementById('form-session-label').textContent = `오후 ${sess.label}`;
-        document.getElementById('form-session-name').textContent = sess.time;
+  const corner=document.createElement('div');
+  corner.className='cal-head';
+  corner.style.borderRight='2px solid #AAAAAA';
+  grid.appendChild(corner);
+  dates.forEach((d,i)=>{
+    const ds=d.toISOString().slice(0,10);
+    const h=document.createElement('div');
+    h.className='cal-head'+(ds===todayStr?' today-col':'');
+    h.textContent=`${days[i]} ${d.getMonth()+1}/${d.getDate()}`;
+    grid.appendChild(h);
+  });
 
-        // 버튼 색상 변경
-        const btn = document.getElementById('submitBtn');
-        btn.className = `submit-btn s${s}`;
+  const allSlots=SLOTS_WEEKDAY;
+  allSlots.forEach((slot,si)=>{
+    const isLast=si===allSlots.length-1;
+    const lbl=document.createElement('div');
+    lbl.className='slot-label'+(isLast?' row-last':'');
+    lbl.innerHTML=`<span style="font-size:13px">${slot.label}</span>`;
+    grid.appendChild(lbl);
 
-        // 메시지 초기화
-        const msg = document.getElementById('message');
-        msg.className = '';
-        msg.style.display = 'none';
-        msg.textContent = '';
-        btn.disabled = false;
-        btn.textContent = '✅ 출석 제출하기';
+    dates.forEach((d)=>{
+      const ds=d.toISOString().slice(0,10);
+      const daySlots=getSlotsForDate(ds);
+      const available=daySlots.find(s=>s.start===slot.start);
+      const cell=document.createElement('div');
+      cell.className='cal-cell'+(isLast?' row-last':'');
 
-        showScreen('form-screen');
-    }
-
-    function goHome() {
-        updateCards();
-        showScreen('home');
-    }
-
-    // ── IP 미리 가져오기 ──
-    function startCheckIn() {
-        const classNum  = document.getElementById("classSelect").value;
-        const stdId     = document.getElementById("studentId").value.trim();
-        const stdName   = document.getElementById("studentName").value.trim();
-        const userType  = document.getElementById("statusSelect").value;
-        const msg       = document.getElementById("message");
-        const btn       = document.getElementById("submitBtn");
-
-        if (!classNum)            { showMsg('error', '반을 선택해주세요!'); return; }
-        if (!stdId)               { showMsg('error', '번호를 선택해주세요!'); return; }
-        if (!stdName)             { showMsg('error', '이름을 확인할 수 없습니다.'); return; }
-
-        if (isDone(currentSession)) {
-            const doneName = getDoneName(currentSession);
-            showMsg('error', `이 기기에서 이미 ${doneName} 학생의 ${SESSIONS[currentSession].label} 출석이 제출되었습니다.\n대리 출석은 불가합니다.`);
-            return;
-        }
-
-        showMsg('info', '📡 제출 중...');
-        btn.disabled = true;
-
-        // 학교 안 상태일 때만 IP 체크
-        const schoolStatuses = ['교실', '홈베이스', '또래학습'];
-        if (schoolStatuses.includes(userType)) {
-            if (userIp === '알수없음') {
-                showMsg('error', '네트워크 확인 중입니다. 잠시 후 다시 시도해주세요.');
-                btn.disabled = false;
-                return;
-            }
-            if (userIp !== SCHOOL_IP) {
-                showMsg('error', '학교 와이파이에 연결된 상태에서만\n학교 안 출석 제출이 가능합니다.');
-                btn.disabled = false;
-                return;
-            }
-        }
-
-        sendData(classNum, `${stdId} ${stdName}`, userType, stdId, stdName);
-    }
-
-    // ── 명단 불러오기 ──
-    let rosterCache = {};
-
-    function loadStudents(className) {
-        const sel = document.getElementById('studentSelect');
-        const nameInput = document.getElementById('studentName');
-        sel.innerHTML = '<option value="">불러오는 중...</option>';
-        nameInput.value = '';
-        document.getElementById('studentId').value = '';
-
-        if (rosterCache[className]) {
-            renderStudents(rosterCache[className]);
-            return;
-        }
-
-        fetch(`${scriptUrl}?action=getStudents&className=${encodeURIComponent(className)}`)
-            .then(r => r.json())
-            .then(students => {
-                rosterCache[className] = students;
-                renderStudents(students);
-            })
-            .catch(() => {
-                sel.innerHTML = '<option value="">명단을 불러올 수 없습니다</option>';
-            });
-    }
-
-    function renderStudents(students) {
-        const sel = document.getElementById('studentSelect');
-        if (!students || students.length === 0) {
-            sel.innerHTML = '<option value="">명단이 없습니다</option>';
-            return;
-        }
-        sel.innerHTML = '<option value="">-- 번호 선택 --</option>';
-        students.forEach(function(s) {
-            const opt = document.createElement('option');
-            opt.value = s.num;
-            opt.textContent = `${s.num}번 · ${s.name}`;
-            opt.dataset.name = s.name;
-            sel.appendChild(opt);
-        });
-    }
-
-    function onStudentSelect() {
-        const sel = document.getElementById('studentSelect');
-        const selected = sel.options[sel.selectedIndex];
-        if (selected && selected.dataset.name) {
-            document.getElementById('studentName').value = selected.dataset.name;
-            document.getElementById('studentId').value = selected.value;
+      if(!available || isSlotPast(ds, slot)){
+        cell.classList.add('closed');
+        cell.innerHTML='<div class="closed-x">—</div>';
+      } else {
+        const booked=reservations.filter(r=>r.room===currentRoom&&r.date===ds&&r.slotIdx===si&&r.status!=='cancelled'&&r.status!=='denied');
+        if(booked.length){
+          booked.forEach(r=>{
+            const total=1+(r.coUsers?r.coUsers.length:0);
+            const coLines=r.coUsers&&r.coUsers.length?'👥 동반:<br>· '+r.coUsers.map(u=>`${u.name}(${u.sid})`).join('<br>· ')+'<br>':'';
+            const colorClass=r.status==='pending'?'slot-pending':r.status==='approved'?'slot-approved':'slot-other';
+            const s=document.createElement('div');
+            s.className='booked-slot '+colorClass;
+            s.textContent=r.name+(total>1?` 외 ${total-1}명`:'');
+            s.dataset.tip=`👤 <b>${r.name}</b> (${r.sid})<br>${coLines}📝 ${r.purpose}`;
+            s.addEventListener('mouseenter',showTip);
+            s.addEventListener('mousemove',moveTip);
+            s.addEventListener('mouseleave',hideTip);
+            cell.appendChild(s);
+          });
         } else {
-            document.getElementById('studentName').value = '';
-            document.getElementById('studentId').value = '';
+          cell.innerHTML='<div style="font-size:13px;color:var(--color-text-tertiary);text-align:center;padding-top:16px">예약 가능</div>';
+          cell.onclick=()=>{
+            document.getElementById('f-date').value=ds;
+            document.getElementById('f-room').value=currentRoom;
+            updateSlots();
+            document.getElementById('f-slot').value=si;
+            document.getElementById('f-name').scrollIntoView({behavior:'smooth',block:'nearest'});
+          };
         }
+      }
+      grid.appendChild(cell);
+    });
+  });
+}
+
+function isSlotPast(dateStr, slot){
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0,10);
+  if(dateStr !== todayStr) return dateStr < todayStr;
+  const [h,m] = slot.start.split(':').map(Number);
+  return now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m);
+}
+
+function updateSlots(){
+  const dateStr=document.getElementById('f-date').value;
+  const slots=getSlotsForDate(dateStr);
+  const sel=document.getElementById('f-slot');
+  if(!slots.length){
+    sel.innerHTML='<option>해당 날짜는 운영하지 않습니다</option>';
+    return;
+  }
+  const available = slots.filter((s,i) => !isSlotPast(dateStr, s));
+  if(!available.length){
+    sel.innerHTML='<option>오늘 예약 가능한 시간대가 없습니다</option>';
+    return;
+  }
+  sel.innerHTML=available.map((s,i)=>{
+    const realIdx = slots.indexOf(s);
+    return `<option value="${realIdx}">${s.label}</option>`;
+  }).join('');
+}
+
+function showAlert(type,msg){
+  const b=document.getElementById('alert-box');
+  b.className='alert alert-'+type;b.textContent=msg;b.style.display='block';
+  setTimeout(()=>{b.style.display='none';},5000);
+}
+
+function getReservedDates(sid){
+  return reservations
+    .filter(r=>r.status!=='cancelled'&&r.status!=='denied'&&(
+      r.sid===sid || (r.coUsers&&r.coUsers.some(u=>u.sid===sid))
+    ))
+    .map(r=>r.date);
+}
+
+function getOperatingDays(dateStr, rangeBack, rangeFwd){
+  const result=[];
+  const base=new Date(dateStr);
+  let cur=new Date(base);
+  cur.setDate(base.getDate()-rangeBack*7);
+  const end=new Date(base);
+  end.setDate(base.getDate()+rangeFwd*7);
+  while(cur<=end){
+    const dow=cur.getDay();
+    if(dow>=1&&dow<=5) result.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate()+1);
+  }
+  return result;
+}
+
+function getOperatingIndex(dateStr){
+  const base=new Date(dateStr);
+  const start=new Date(base);
+  start.setDate(base.getDate()-14);
+  let idx=0;
+  const map={};
+  const cur=new Date(start);
+  while(cur<=new Date(new Date(base).setDate(base.getDate()+14))){
+    const dow=cur.getDay();
+    if(dow>=1&&dow<=5){
+      map[cur.toISOString().slice(0,10)]=idx++;
     }
-    // ── IP 미리 가져오기 ──
-    let userIp = '알수없음';
-    fetch('https://api.ipify.org?format=json')
-        .then(r => r.json())
-        .then(d => { userIp = d.ip; })
-        .catch(() => {});
+    cur.setDate(cur.getDate()+1);
+  }
+  return map;
+}
 
-    function getDeviceInfo() {
-        const ua = navigator.userAgent;
-        let brand = '기타', type = '기타';
-        if (/iPhone/i.test(ua)) brand = 'iPhone';
-        else if (/iPad/i.test(ua)) brand = 'iPad';
-        else if (/SM-|Samsung/i.test(ua)) brand = '갤럭시';
-        else if (/Android/i.test(ua)) brand = 'Android';
-        else if (/Windows/i.test(ua)) brand = 'Windows PC';
-        else if (/Macintosh/i.test(ua)) brand = 'Mac';
-        if (/Mobile/i.test(ua)) type = '스마트폰';
-        else if (/Tablet|iPad/i.test(ua)) type = '태블릿';
-        else if (/Windows|Macintosh|Linux/i.test(ua)) type = 'PC';
-        return `${brand} (${type})`;
+function isThreeConsecutive(sid,date){
+  const reserved=getReservedDates(sid);
+  const indexMap=getOperatingIndex(date);
+  const targetIdx=indexMap[date];
+  if(targetIdx===undefined) return false;
+  const hasIdx=(i)=>Object.keys(indexMap).some(d=>indexMap[d]===i&&reserved.includes(d));
+  return (hasIdx(targetIdx-2)&&hasIdx(targetIdx-1))
+      ||(hasIdx(targetIdx-1)&&hasIdx(targetIdx+1))
+      ||(hasIdx(targetIdx+1)&&hasIdx(targetIdx+2));
+}
+
+async function submitReservation(){
+  const name=document.getElementById('f-name').value.trim();
+  const sid=document.getElementById('f-id').value.trim();
+  const room=document.getElementById('f-room').value;
+  const date=document.getElementById('f-date').value;
+  const slotIdx=parseInt(document.getElementById('f-slot').value);
+  const purpose=document.getElementById('f-purpose').value.trim();
+  const coUsers=getCoUsers();
+
+  if(!name||!sid||!date||isNaN(slotIdx)||!purpose){showAlert('err','모든 항목을 입력해주세요.');return;}
+  if(sid.length!==5){showAlert('err','학번은 5자리 숫자로 입력해주세요. (예: 20101)');return;}
+
+  for(let i=0;i<coUsers.length;i++){
+    if(!coUsers[i].name||!coUsers[i].sid){
+      showAlert('err',`동반 학생 ${i+1}번의 이름과 학번을 모두 입력해주세요.`);return;
     }
-
-    function sendData(classNum, name, userType, stdId, stdName) {
-        const sess = SESSIONS[currentSession];
-        const finalStatus = `${sess.label} - ${userType}`;
-
-        const device = getDeviceInfo();
-        const url = `${scriptUrl}?className=${encodeURIComponent(classNum)}&name=${encodeURIComponent(name)}&status=${encodeURIComponent(finalStatus)}&device=${encodeURIComponent(device)}&userIp=${encodeURIComponent(userIp)}`;
-
-        // 출석일 때만 IP 체크 응답 확인 (no-cors 대신 cors로 변경)
-        fetch(url)
-            .then(r => r.text())
-            .then(text => {
-                try {
-                    const json = JSON.parse(text);
-                    if (json.error === 'NOT_SCHOOL_IP') {
-                        showMsg('error', '학교 와이파이에 연결된 상태에서만 출석 제출이 가능합니다.');
-                        document.getElementById('submitBtn').disabled = false;
-                        return;
-                    }
-                } catch(e) {}
-
-                markDone(currentSession, stdName);
-                document.getElementById('success-detail').innerHTML =
-                    `<strong>${stdName}</strong> 학생<br>` +
-                    `<strong>${classNum}</strong> · 번호 <strong>${stdId}</strong><br><br>` +
-                    `${sess.label} (${sess.time})<br>` +
-                    `상태: <strong>${userType}</strong>`;
-                showScreen('success-screen');
-            })
-            .catch(() => {
-                // CORS 실패 시 no-cors로 재시도 (제출은 되었을 가능성)
-                fetch(url, { mode: 'no-cors' }).then(() => {
-                    markDone(currentSession, stdName);
-                    document.getElementById('success-detail').innerHTML =
-                        `<strong>${stdName}</strong> 학생<br>` +
-                        `<strong>${classNum}</strong> · 번호 <strong>${stdId}</strong><br><br>` +
-                        `${sess.label} (${sess.time})<br>` +
-                        `상태: <strong>${userType}</strong>`;
-                    showScreen('success-screen');
-                }).catch(() => {
-                    showMsg('error', '전송 중 오류가 발생했습니다. 다시 시도해주세요.');
-                    document.getElementById('submitBtn').disabled = false;
-                });
-            });
+    if(coUsers[i].sid.length!==5){
+      showAlert('err',`동반 학생 ${i+1}번의 학번은 5자리여야 합니다.`);return;
     }
+  }
 
-    function showMsg(type, text) {
-        const msg = document.getElementById('message');
-        msg.className = type;
-        msg.style.display = 'block';
-        msg.textContent = text;
+  const slots=getSlotsForDate(date);
+  if(!slots.length){showAlert('err','해당 날짜는 운영하지 않습니다.');return;}
+  if(slotIdx>=slots.length){showAlert('err','해당 날짜에 없는 슬롯입니다.');return;}
+
+  if(isThreeConsecutive(sid,date)){showAlert('err',`대표자(${name})가 3일 연속 예약으로 신청 불가합니다.`);return;}
+  for(let i=0;i<coUsers.length;i++){
+    if(isThreeConsecutive(coUsers[i].sid,date)){
+      showAlert('err',`동반 학생 ${coUsers[i].name}(${coUsers[i].sid})이(가) 3일 연속 예약으로 신청 불가합니다.`);return;
     }
+  }
 
-    // ── 모든 클릭 이벤트 등록 (스크립트가 body 끝에 위치하므로 DOM 이미 준비됨) ──
-    [1, 2, 3].forEach(function(s) {
-        document.getElementById('card-' + s).addEventListener('click', function(e) {
-            e.preventDefault();
-            openSession(s);
-        });
-    });
-    document.getElementById('classSelect').addEventListener('change', function() {
-        if (this.value) loadStudents(this.value);
-        else {
-            document.getElementById('studentSelect').innerHTML = '<option value="">-- 반을 먼저 선택하세요 --</option>';
-            document.getElementById('studentName').value = '';
-            document.getElementById('studentId').value = '';
-        }
-    });
-    document.getElementById('studentSelect').addEventListener('change', onStudentSelect);
-    document.getElementById('backBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        goHome();
-    });
-    document.getElementById('submitBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        startCheckIn();
-    });
-    document.getElementById('returnBtn').addEventListener('click', function(e) {
-        e.preventDefault();
-        goHome();
-    });
+  if(examMode){
+    const weekCount=reservations.filter(r=>{
+      if(r.sid!==sid||r.status==='cancelled'||r.status==='denied') return false;
+      const rd=new Date(r.date),td=new Date(date);
+      const mon=new Date(td); mon.setDate(td.getDate()-((td.getDay()+6)%7));
+      const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+      return rd>=mon&&rd<=sun;
+    }).length;
+    if(weekCount>=2){showAlert('err','시험기간에는 주당 최대 2회까지만 예약할 수 있습니다.');return;}
+  }
 
-    updateClock(); // 시계 즉시 시작
+  const overlap=reservations.find(r=>r.room===room&&r.date===date&&r.slotIdx===slotIdx&&r.status!=='cancelled'&&r.status!=='denied');
+  const autoStatus = overlap ? 'pending' : 'approved';
+
+  try {
+    showLoadingOverlay(true);
+    await apiPost({ action:'add', reservation:{name,sid,room,date,slotIdx,purpose,coUsers,status:autoStatus} });
+    if(autoStatus==='approved'){
+      showAlert('success','예약이 완료되었습니다! ✅');
+    } else {
+      showAlert('warn','같은 시간대에 이미 예약이 있어 대기 상태로 접수되었습니다. 선생님 확인 후 승인됩니다.');
+    }
+    document.getElementById('co-users').innerHTML='';
+    document.getElementById('f-name').value='';
+    document.getElementById('f-purpose').value='';
+    await loadReservations();
+  } catch(e) {
+    showAlert('err','예약 실패: ' + e.message);
+  } finally {
+    showLoadingOverlay(false);
+  }
+}
+
+function renderMyReservations(){
+  const sid=document.getElementById('f-id').value.trim();
+  const box=document.getElementById('my-reservations');
+  if(!sid){box.innerHTML='';return;}
+  const mine=reservations.filter(r=>r.sid===sid&&r.status!=='cancelled');
+  if(!mine.length){box.innerHTML='';return;}
+  box.innerHTML=`<div style="font-size:15px;font-weight:500;margin-bottom:10px">내 예약 현황</div>`+
+  mine.map(r=>{
+    const slots=getSlotsForDate(r.date);
+    const slotLabel=slots[r.slotIdx]?slots[r.slotIdx].label:`슬롯 ${r.slotIdx+1}`;
+    const coStr=r.coUsers&&r.coUsers.length
+      ?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px">동반: ${r.coUsers.map(u=>`${u.name}(${u.sid})`).join(', ')}</div>`
+      :'';
+    return `<div style="padding:10px 14px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin-bottom:8px;background:var(--color-background-primary)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div>
+          <span style="font-size:13px;font-weight:500">룸 ${r.room} · ${r.date}</span>
+          <span style="font-size:12px;color:var(--color-text-secondary);margin-left:6px">${slotLabel}</span>
+          <span style="font-size:12px;color:var(--color-text-secondary);margin-left:6px">${r.purpose}</span>
+          ${coStr}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="badge badge-${r.status}">${r.status==='pending'?'대기':r.status==='approved'?'승인':'취소'}</span>
+          <button class="btn-cancel" onclick="cancelRes(${r.id})">취소</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cancelRes(id){
+  try {
+    showLoadingOverlay(true);
+    await apiPost({ action:'updateStatus', id, status:'cancelled' });
+    await loadReservations();
+  } catch(e) {
+    showAlert('err','취소 실패: ' + e.message);
+  } finally {
+    showLoadingOverlay(false);
+  }
+}
+
+async function toggleExamMode(){
+  examMode=document.getElementById('exam-mode').checked;
+  document.getElementById('exam-label').textContent=examMode
+    ?'— 켜짐 (주 2회 제한 적용 중)'
+    :'— 꺼짐 (롤링 예약)';
+  try {
+    await apiPost({ action:'setExamMode', value: examMode });
+  } catch(e) {
+    showAlert('err','시험기간 모드 저장 실패: ' + e.message);
+  }
+  renderAdmin();
+}
+
+function renderAdmin(){
+  const tbody=document.getElementById('admin-tbody');
+  const active=reservations.filter(r=>r.status!=='cancelled');
+  const sorted=[...active].sort((a,b)=>a.id-b.id);
+  tbody.innerHTML=sorted.map(r=>{
+    const slots=getSlotsForDate(r.date);
+    const slotLabel=slots[r.slotIdx]?slots[r.slotIdx].label:`슬롯 ${r.slotIdx+1}`;
+    const coStr=r.coUsers&&r.coUsers.length
+      ?r.coUsers.map(u=>`<span style="display:inline-block;font-size:11px;background:var(--color-background-secondary);border-radius:3px;padding:1px 5px;margin:1px">${u.name} <span style="color:var(--color-text-tertiary)">${u.sid}</span></span>`).join('')
+      :'<span style="color:var(--color-text-tertiary);font-size:12px">—</span>';
+    return `<tr>
+      <td style="font-weight:500">${r.name}</td>
+      <td style="color:var(--color-text-secondary)">${r.sid}</td>
+      <td>${coStr}</td>
+      <td>룸 ${r.room}</td>
+      <td>${r.date}</td>
+      <td style="white-space:nowrap;font-size:12px">${slotLabel}</td>
+      <td style="color:var(--color-text-secondary)">${r.purpose}</td>
+      <td><span class="badge badge-${r.status}">${r.status==='pending'?'대기':r.status==='approved'?'승인':r.status==='denied'?'거절':'취소'}</span></td>
+      <td>${r.status==='pending'?`<button class="btn-approve" onclick="adminAction(${r.id},'approved')">승인</button><button class="btn-deny" onclick="adminAction(${r.id},'denied')">거절</button>`:'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('st-total').textContent=active.length;
+  document.getElementById('st-pending').textContent=active.filter(r=>r.status==='pending').length;
+  document.getElementById('st-approved').textContent=active.filter(r=>r.status==='approved').length;
+}
+
+async function adminAction(id,status){
+  try {
+    showLoadingOverlay(true);
+    await apiPost({ action:'updateStatus', id, status });
+    await loadReservations();
+    renderAdmin();
+  } catch(e) {
+    showAlert('err','처리 실패: ' + e.message);
+  } finally {
+    showLoadingOverlay(false);
+  }
+}
+
+
+function showTip(e){
+  const t=document.getElementById('floating-tooltip');
+  t.innerHTML=e.currentTarget.dataset.tip;
+  t.style.display='block';
+  positionTip(e);
+}
+function moveTip(e){ positionTip(e); }
+function hideTip(){ document.getElementById('floating-tooltip').style.display='none'; }
+function positionTip(e){
+  const t=document.getElementById('floating-tooltip');
+  const x=e.clientX, y=e.clientY;
+  const tw=t.offsetWidth, th=t.offsetHeight;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  t.style.left=(x+tw+12>vw ? x-tw-4 : x+12)+'px';
+  t.style.top=(y+th+12>vh ? y-th-4 : y+12)+'px';
+}
+
+// ---- 초기화 ----
+const todayStr=new Date().toISOString().slice(0,10);
+const monStr=getThisWeekMonday().toISOString().slice(0,10);
+const friStr=getThisWeekFriday().toISOString().slice(0,10);
+const todayDow=new Date().getDay();
+const isWeekend=(todayDow===0||todayDow===6);
+
+if(isWeekend){
+  const studentView=document.getElementById('view-student');
+  studentView.innerHTML=`
+    <div style="text-align:center;padding:3rem 1rem">
+      <div style="font-size:48px;margin-bottom:1rem">📅</div>
+      <div style="font-size:20px;font-weight:600;margin-bottom:8px;color:var(--color-text-primary)">주말에는 예약을 받지 않아요</div>
+      <div style="font-size:14px;color:var(--color-text-secondary);line-height:1.8">
+        예약은 <strong>월요일 ~ 금요일</strong>에만 가능합니다.<br>
+        월요일 오전에 다시 방문해 주세요! 😊
+      </div>
+    </div>`;
+} else {
+  const fdate=document.getElementById('f-date');
+  fdate.min=monStr;
+  fdate.max=friStr;
+  fdate.value=(todayDow>=1&&todayDow<=5)?todayStr:monStr;
+  updateSlots();
+}
+loadReservations();
 </script>
-</body>
-</html>
